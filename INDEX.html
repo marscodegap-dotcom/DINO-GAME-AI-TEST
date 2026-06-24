@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дино-Раннер: Неоновое Выживание</title>
+    <!-- Tailwind CSS для стильного интерфейса -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение шрифта Inter и иконок FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0614;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        /* Анимация пульсации для неонового текста */
+        @keyframes neonGlow {
+            0%, 100% { text-shadow: 0 0 10px rgba(236, 72, 153, 0.7), 0 0 20px rgba(236, 72, 153, 0.5); }
+            50% { text-shadow: 0 0 15px rgba(236, 72, 153, 0.9), 0 0 30px rgba(236, 72, 153, 0.7); }
+        }
+        .neon-text {
+            animation: neonGlow 2s infinite;
+        }
+        /* Неоновые тени для карточек */
+        .neon-border {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+            border: 1px solid rgba(236, 72, 153, 0.4);
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+        }
+        /* Стилизация скроллбара в магазине */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(13, 6, 20, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ec4899;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-gray-100 p-4">
+
+<div class="w-full max-w-4xl flex flex-col items-center gap-4">
+    <!-- Название и Счет -->
+    <div class="w-full flex flex-col md:flex-row justify-between items-center gap-2 px-2">
+        <div class="flex items-center gap-3">
+            <span class="text-pink-500 text-3xl"><i class="fa-solid fa-dragon animate-bounce"></i></span>
+            <h1 class="text-2xl md:text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 uppercase">
+                Neon Dino Run
+            </h1>
+        </div>
+        <div class="flex items-center gap-4 bg-purple-950/40 px-4 py-2 rounded-xl neon-border-cyan">
+            <div class="text-center">
+                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">Рекорд</p>
+                <p id="high-score-display" class="pixel-font text-sm text-cyan-300">00000</p>
+            </div>
+            <div class="h-8 w-[1px] bg-cyan-800"></div>
+            <div class="text-center">
+                <p class="text-[10px] text-pink-400 font-bold uppercase tracking-wider">Счет</p>
+                <p id="score-display" class="pixel-font text-sm text-pink-400">00000</p>
+            </div>
+            <div class="h-8 w-[1px] bg-cyan-800"></div>
+            <div class="text-center flex items-center gap-2">
+                <span class="text-yellow-400 text-sm"><i class="fa-solid fa-coins"></i></span>
+                <p id="coins-display" class="pixel-font text-sm text-yellow-400">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Игровой холст с оверлеями -->
+    <div class="relative w-full aspect-[2/1] bg-slate-950 rounded-2xl overflow-hidden neon-border">
+        <!-- Canvas игры -->
+        <canvas id="game-canvas" class="w-full h-full block"></canvas>
+
+        <!-- Оверлей: Главное Меню -->
+        <div id="main-menu" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 text-center z-20">
+            <h2 class="pixel-font text-2xl md:text-4xl text-pink-500 mb-2 neon-text">NEON DINO</h2>
+            <p class="text-gray-400 text-sm md:text-base max-w-md mb-6 leading-relaxed">
+                Беги, перепрыгивай неоновые кактусы и уворачивайся от птеродактилей! Собирай монеты и заряжай суперспособности.
+            </p>
+            
+            <div class="flex flex-wrap gap-4 justify-center">
+                <button id="start-btn" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-extrabold px-8 py-4 rounded-xl shadow-lg shadow-pink-500/30 transform active:scale-95 transition flex items-center gap-2 text-lg">
+                    <i class="fa-solid fa-play"></i> ИГРАТЬ
+                </button>
+                <button id="open-shop-btn" class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-4 rounded-xl transform active:scale-95 transition flex items-center gap-2 border border-gray-700">
+                    <i class="fa-solid fa-store text-yellow-400"></i> МАГАЗИН СКИНОВ
+                </button>
+            </div>
+
+            <!-- Подсказка управления -->
+            <div class="mt-8 text-xs text-gray-500 hidden md:flex items-center gap-4">
+                <span><kbd class="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-gray-300">Space</kbd> или <kbd class="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-gray-300">↑</kbd> — Прыжок</span>
+                <span><kbd class="px-2 py-1 bg-gray-800 rounded border border-gray-700 text-gray-300">↓</kbd> — Присесть</span>
+            </div>
+        </div>
+
+        <!-- Оверлей: Игра Окончена -->
+        <div id="game-over-menu" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+            <h2 class="pixel-font text-3xl md:text-5xl text-red-500 mb-2">ИГРА ОКОНЧЕНА</h2>
+            <p id="game-over-reason" class="text-gray-400 text-sm md:text-base mb-6">Вы врезались в препятствие!</p>
+            
+            <div class="bg-purple-950/50 p-4 rounded-xl border border-purple-800 mb-6 flex gap-6">
+                <div>
+                    <span class="text-xs text-gray-400 block">Дистанция</span>
+                    <span id="final-score" class="pixel-font text-lg text-pink-400">0</span>
+                </div>
+                <div class="w-[1px] bg-purple-800"></div>
+                <div>
+                    <span class="text-xs text-gray-400 block">Собрано монет</span>
+                    <span id="final-coins" class="pixel-font text-lg text-yellow-400">+0</span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-4 justify-center">
+                <button id="retry-btn" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-extrabold px-8 py-4 rounded-xl shadow-lg shadow-pink-500/30 transform active:scale-95 transition flex items-center gap-2 text-lg">
+                    <i class="fa-solid fa-arrows-rotate"></i> ИГРАТЬ СНОВА
+                </button>
+                <button id="go-home-btn" class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-4 rounded-xl transform active:scale-95 transition flex items-center gap-2 border border-gray-700">
+                    <i class="fa-solid fa-house"></i> В МЕНЮ
+                </button>
+            </div>
+        </div>
+
+        <!-- Оверлей: Пауза -->
+        <div id="pause-menu" class="absolute inset-0 bg-black/75 flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+            <h2 class="pixel-font text-3xl text-cyan-400 mb-6">ПАУЗА</h2>
+            <div class="flex gap-4">
+                <button id="resume-btn" class="bg-cyan-500 hover:bg-cyan-600 text-black font-extrabold px-6 py-3 rounded-xl shadow-lg shadow-cyan-500/30 transform active:scale-95 transition flex items-center gap-2">
+                    <i class="fa-solid fa-play"></i> ПРОДОЛЖИТЬ
+                </button>
+                <button id="exit-btn" class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-3 rounded-xl transform active:scale-95 transition">
+                    ВЫЙТИ
+                </button>
+            </div>
+        </div>
+
+        <!-- Оверлей: Магазин Скинов -->
+        <div id="shop-menu" class="absolute inset-0 bg-slate-950/95 flex flex-col p-4 md:p-6 z-30 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="pixel-font text-lg md:text-xl text-yellow-400 flex items-center gap-2">
+                    <i class="fa-solid fa-store text-yellow-400 animate-pulse"></i> МАГАЗИН СКИНОВ
+                </h2>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-yellow-950/50 px-3 py-1.5 rounded-lg border border-yellow-700">
+                        <i class="fa-solid fa-coins text-yellow-400 text-sm"></i>
+                        <span id="shop-coins" class="pixel-font text-xs text-yellow-400">0</span>
+                    </div>
+                    <button id="close-shop-btn" class="text-gray-400 hover:text-white text-xl bg-gray-800 p-2 rounded-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Скины -->
+            <div id="shop-items" class="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto flex-1 pr-1">
+                <!-- Скины генерируются динамически через JS -->
+            </div>
+        </div>
+
+        <!-- Оверлей: HUD Индикаторы бонусов -->
+        <div id="hud-powerups" class="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
+            <!-- Сюда встраиваются активные баффы -->
+        </div>
+
+        <!-- Кнопка Паузы в игре -->
+        <button id="pause-btn" class="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-gray-300 hover:text-white p-2.5 rounded-xl border border-gray-800/40 backdrop-blur-sm z-10 hidden">
+            <i class="fa-solid fa-pause"></i>
+        </button>
+    </div>
+
+    <!-- Интерактивные Мобильные Кнопки -->
+    <div class="w-full grid grid-cols-2 gap-4 mt-2 h-20 md:hidden">
+        <button id="mobile-duck" class="bg-purple-900/30 active:bg-purple-900/60 border border-purple-800 rounded-2xl flex flex-col items-center justify-center text-white text-xl font-bold transition">
+            <i class="fa-solid fa-arrow-down text-2xl mb-1 text-purple-400"></i>
+            <span class="text-xs uppercase tracking-widest text-gray-400">Присесть</span>
+        </button>
+        <button id="mobile-jump" class="bg-pink-900/30 active:bg-pink-900/60 border border-pink-800 rounded-2xl flex flex-col items-center justify-center text-white text-xl font-bold transition">
+            <i class="fa-solid fa-arrow-up text-2xl mb-1 text-pink-400"></i>
+            <span class="text-xs uppercase tracking-widest text-gray-400">Прыжок</span>
+        </button>
+    </div>
+
+    <!-- Нижняя панель с Описанием Бонусов -->
+    <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-900/50 p-4 rounded-2xl border border-gray-800">
+        <div class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-emerald-400">Щит</h4>
+                <p class="text-gray-400">Игнорирует одно столкновение.</p>
+            </div>
+        </div>
+        <div class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-bolt animate-pulse"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-cyan-400">Двойной прыжок</h4>
+                <p class="text-gray-400">Позволяет прыгнуть в воздухе.</p>
+            </div>
+        </div>
+        <div class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-lg bg-yellow-500/20 text-yellow-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-magnet"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-yellow-400">Магнит</h4>
+                <p class="text-gray-400">Притягивает монеты издалека.</p>
+            </div>
+        </div>
+        <div class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-indigo-400">Замедление</h4>
+                <p class="text-gray-400">Снижает скорость окружения.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS CONSOLIDATION -->
+<script>
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+    }
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    playJump() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+    }
+
+    playDuck() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(250, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playCoin() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08);
+
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+    }
+
+    playPowerup() {
+        if (this.muted) return;
+        this.init();
+        const notes = [261.63, 329.63, 392.00, 523.25];
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.05);
+
+            gain.gain.setValueAtTime(0.05, this.ctx.currentTime + idx * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.005, this.ctx.currentTime + idx * 0.05 + 0.2);
+
+            osc.start(this.ctx.currentTime + idx * 0.05);
+            osc.stop(this.ctx.currentTime + idx * 0.05 + 0.2);
+        });
+    }
+
+    playGameOver() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.5);
+
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+}
+
+const sound = new SoundEngine();
+</script>
+
+<script>
+
+// Логика удаления заднего фона у загруженного изображения
+let characterSpriteLoaded = false;
+let processedSpriteCanvas = null;
+const skinCanvases = {};
+
+const charImage = new Image();
+charImage.crossOrigin = "anonymous";
+charImage.src = "https://raw.githubusercontent.com/marscodegap-dotcom/DINO-GAME-AI-TEST/refs/heads/main/67.png";
+
+charImage.onload = () => {
+    // Вызов функции удаления фона
+    removeImageBackground(charImage, (transparentCanvas) => {
+        processedSpriteCanvas = transparentCanvas;
+        characterSpriteLoaded = true;
+        
+        // Генерируем цветные/неоновые версии для магазина
+        skinCanvases['classic'] = transparentCanvas;
+        skinCanvases['cyber'] = tintCanvas(transparentCanvas, '#06b6d4');
+        skinCanvases['fire'] = tintCanvas(transparentCanvas, '#ea580c');
+        skinCanvases['wizard'] = tintCanvas(transparentCanvas, '#8b5cf6');
+        
+        // Перерисовываем витрину магазина
+        renderShop();
+    });
+};
+
+// Функция удаления однотонного/белого фона с помощью Canvas
+function removeImageBackground(img, callback) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    canvas.width = w;
+    canvas.height = h;
+    
+    ctx.drawImage(img, 0, 0);
+    
+    try {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        
+        // Собираем цвета пикселей в четырех углах изображения для определения цвета фона
+        const corners = [
+            { r: data[0], g: data[1], b: data[2], a: data[3] }, // Левый верхний
+            { r: data[(w - 1) * 4], g: data[(w - 1) * 4 + 1], b: data[(w - 1) * 4 + 2], a: data[(w - 1) * 4 + 3] }, // Правый верхний
+            { r: data[(h - 1) * w * 4], g: data[(h - 1) * w * 4 + 1], b: data[(h - 1) * w * 4 + 2], a: data[(h - 1) * w * 4 + 3] }, // Левый нижний
+            { r: data[((h - 1) * w + (w - 1)) * 4], g: data[((h - 1) * w + (w - 1)) * 4 + 1], b: data[((h - 1) * w + (w - 1)) * 4 + 2], a: data[((h - 1) * w + (w - 1)) * 4 + 3] } // Правый нижний
+        ];
+        
+        const threshold = 45; // Порог чувствительности цвета
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            const a = data[i+3];
+            
+            let matchBg = false;
+            
+            // Проверка на совпадение с фоновыми углами
+            for (let c of corners) {
+                if (c.a > 50) { // Игнорируем углы, если они уже прозрачные
+                    const dist = Math.sqrt(Math.pow(r - c.r, 2) + Math.pow(g - c.g, 2) + Math.pow(b - c.b, 2));
+                    if (dist < threshold) {
+                        matchBg = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Защита: удаляем также все оттенки близкие к белому цвету (классическая заготовка с JPEG/PNG)
+            if (r > 240 && g > 240 && b > 240) {
+                matchBg = true;
+            }
+            
+            if (matchBg) {
+                data[i+3] = 0; // Полная прозрачность
+            }
+        }
+        
+        ctx.putImageData(imgData, 0, 0);
+        callback(canvas);
+    } catch (e) {
+        console.warn("CORS ограничил прямой доступ к пикселям, используем сырой спрайт", e);
+        callback(img);
+    }
+}
+
+// Вспомогательное тонирование спрайтов
+function tintCanvas(sourceCanvas, color) {
+    const tintCanv = document.createElement('canvas');
+    tintCanv.width = sourceCanvas.width;
+    tintCanv.height = sourceCanvas.height;
+    const tintCtx = tintCanv.getContext('2d');
+    
+    tintCtx.drawImage(sourceCanvas, 0, 0);
+    tintCtx.globalCompositeOperation = 'source-in';
+    tintCtx.fillStyle = color;
+    tintCtx.fillRect(0, 0, tintCanv.width, tintCanv.height);
+    
+    const finalCanv = document.createElement('canvas');
+    finalCanv.width = sourceCanvas.width;
+    finalCanv.height = sourceCanvas.height;
+    const finalCtx = finalCanv.getContext('2d');
+    
+    finalCtx.drawImage(sourceCanvas, 0, 0);
+    finalCtx.globalAlpha = 0.55; // Смешиваем оригинальные цвета с неоновым тоном
+    finalCtx.drawImage(tintCanv, 0, 0);
+    finalCtx.globalAlpha = 1.0;
+    
+    return finalCanv;
+}
+</script>
+
+<script>
+const SKINS_DATA = [
+    {
+        id: 'classic',
+        name: 'Классик-Спрайт',
+        color: '#10b981',
+        accentColor: '#34d399',
+        price: 0,
+        unlocked: true,
+        desc: 'Новый проработанный динозавр в оригинальных цветах.',
+        draw: (ctx, x, y, w, h, isDucking, runFrame) => drawSpriteDino(ctx, x, y, w, h, isDucking, runFrame, 'classic')
+    },
+    {
+        id: 'cyber',
+        name: 'Кибер-Дино 3000',
+        color: '#06b6d4',
+        accentColor: '#22d3ee',
+        price: 150,
+        unlocked: false,
+        desc: 'Светящийся бирюзовым цветом прототип из кибербудущего.',
+        draw: (ctx, x, y, w, h, isDucking, runFrame) => drawSpriteDino(ctx, x, y, w, h, isDucking, runFrame, 'cyber')
+    },
+    {
+        id: 'fire',
+        name: 'Огненный Дракон',
+        color: '#f97316',
+        accentColor: '#facc15',
+        price: 350,
+        unlocked: false,
+        desc: 'Энергетический скин, пышущий неоновым пламенем.',
+        draw: (ctx, x, y, w, h, isDucking, runFrame) => drawSpriteDino(ctx, x, y, w, h, isDucking, runFrame, 'fire')
+    },
+    {
+        id: 'wizard',
+        name: 'Маг Пустоты',
+        color: '#8b5cf6',
+        accentColor: '#e0f2fe',
+        price: 500,
+        unlocked: false,
+        desc: 'Покрыт пурпурной аурой и оставляет за собой сияющий след.',
+        draw: (ctx, x, y, w, h, isDucking, runFrame) => drawSpriteDino(ctx, x, y, w, h, isDucking, runFrame, 'wizard')
+    }
+];
+
+let playerStats = {
+    coins: 0,
+    highScore: 0,
+    unlockedSkins: ['classic'],
+    activeSkin: 'classic'
+};
+
+function loadStats() {
+    const saved = localStorage.getItem('neon_dino_stats_v3');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            playerStats = { ...playerStats, ...parsed };
+            SKINS_DATA.forEach(skin => {
+                if (playerStats.unlockedSkins.includes(skin.id)) {
+                    skin.unlocked = true;
+                }
+            });
+        } catch (e) {
+            console.error('Ошибка сохранения данных', e);
+        }
+    }
+    updateDisplayStats();
+}
+
+function saveStats() {
+    localStorage.setItem('neon_dino_stats_v3', JSON.stringify(playerStats));
+    updateDisplayStats();
+}
+
+function updateDisplayStats() {
+    document.getElementById('high-score-display').innerText = String(Math.floor(playerStats.highScore)).padStart(5, '0');
+    document.getElementById('coins-display').innerText = playerStats.coins;
+    const shopCoinsEl = document.getElementById('shop-coins');
+    if (shopCoinsEl) shopCoinsEl.innerText = playerStats.coins;
+}
+</script>
+
+<script>
+
+function drawSpriteDino(ctx, x, y, w, h, isDucking, runFrame, skinId) {
+    const activeSprite = skinCanvases[skinId] || processedSpriteCanvas;
+    
+    // Векторный фаллбек на случай, если картинка еще загружается или заблокирована сетью
+    if (!activeSprite) {
+        drawFallbackDino(ctx, x, y, w, h, isDucking, runFrame, skinId);
+        return;
+    }
+    
+    ctx.save();
+    
+    // Стилизация свечения вокруг персонажа в зависимости от скина
+    if (skinId === 'cyber') {
+        ctx.shadowColor = '#06b6d4';
+        ctx.shadowBlur = 10;
+    } else if (skinId === 'fire') {
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 12;
+    } else if (skinId === 'wizard') {
+        ctx.shadowColor = '#8b5cf6';
+        ctx.shadowBlur = 10;
+    }
+
+    if (isDucking) {
+        // Эффект скольжения (сплющивание по вертикали и небольшое расширение)
+        ctx.translate(x + w / 2, y + h);
+        ctx.scale(1.15, 0.55);
+        ctx.drawImage(activeSprite, -w / 2, -h, w, h);
+    } else {
+        // Бег с покачиванием и динамичным вращением
+        const runBounceY = Math.sin(runFrame * 0.4) * 2;
+        const tilt = Math.sin(runFrame * 0.25) * 0.03;
+        
+        ctx.translate(x + w / 2, y + h / 2 + runBounceY);
+        ctx.rotate(tilt);
+        ctx.drawImage(activeSprite, -w / 2, -h / 2, w, h);
+    }
+    
+    ctx.restore();
+}
+
+// Традиционный векторный рендер в качестве резервного варианта
+function drawFallbackDino(ctx, x, y, w, h, isDucking, runFrame, skinId) {
+    let primary = '#10b981', secondary = '#34d399';
+    if (skinId === 'cyber') { primary = '#06b6d4'; secondary = '#22d3ee'; }
+    if (skinId === 'fire') { primary = '#ea580c'; secondary = '#fbbf24'; }
+    if (skinId === 'wizard') { primary = '#6d28d9'; secondary = '#c084fc'; }
+
+    ctx.fillStyle = primary;
+    ctx.strokeStyle = secondary;
+    ctx.lineWidth = 2;
+
+    if (!isDucking) {
+        ctx.beginPath();
+        ctx.roundRect(x + 5, y + 5, w - 15, h - 20, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.roundRect(x + 20, y, w - 20, 20, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(x + 35, y + 10, 10, 4);
+
+        ctx.fillStyle = secondary;
+        if (runFrame % 2 === 0) {
+            ctx.fillRect(x + 10, y + h - 15, 6, 15);
+            ctx.fillRect(x + w - 20, y + h - 15, 6, 8);
+        } else {
+            ctx.fillRect(x + w - 20, y + h - 15, 6, 15);
+            ctx.fillRect(x + 10, y + h - 15, 6, 8);
+        }
+    } else {
+        ctx.beginPath();
+        ctx.roundRect(x, y + 15, w, h - 15, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = secondary;
+        if (runFrame % 2 === 0) {
+            ctx.fillRect(x + 10, y + h - 5, 6, 5);
+        } else {
+            ctx.fillRect(x + w - 10, y + h - 5, 6, 5);
+        }
+    }
+}
+</script>
+
+<script>
+class Particle {
+    constructor(x, y, color, speedX, speedY, size, life) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.speedX = speedX;
+        this.speedY = speedY;
+        this.size = size;
+        this.maxLife = life;
+        this.life = life;
+    }
+
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.life--;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life / this.maxLife;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+    }
+}
+
+class Obstacle {
+    constructor(type, speed) {
+        this.type = type;
+        this.x = 850;
+        this.speed = speed;
+        this.width = 0;
+        this.height = 0;
+        this.y = 0;
+        this.frame = 0;
+
+        if (type === 'cactus_small') {
+            this.width = 24;
+            this.height = 42;
+            this.y = 280 - this.height;
+        } else if (type === 'cactus_large') {
+            this.width = 38;
+            this.height = 56;
+            this.y = 280 - this.height;
+        } else if (type === 'pterodactyl') {
+            this.width = 40;
+            this.height = 30;
+            const levels = [170, 210, 245];
+            this.y = levels[Math.floor(Math.random() * levels.length)];
+        }
+    }
+
+    update() {
+        this.x -= this.speed;
+        this.frame++;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        if (this.type === 'cactus_small') {
+            ctx.fillStyle = '#10b981';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(this.x + 8, this.y, 8, this.height);
+            ctx.fillRect(this.x, this.y + 12, 8, 14);
+            ctx.fillRect(this.x, this.y + 12, 14, 6);
+            ctx.fillRect(this.x + 16, this.y + 18, 8, 12);
+            ctx.fillRect(this.x + 10, this.y + 18, 10, 6);
+        } else if (this.type === 'cactus_large') {
+            ctx.fillStyle = '#059669';
+            ctx.shadowColor = '#059669';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(this.x + 14, this.y, 10, this.height);
+            ctx.fillRect(this.x + 2, this.y + 15, 8, this.height - 15);
+            ctx.fillRect(this.x + 24, this.y + 10, 8, 18);
+            ctx.fillRect(this.x + 18, this.y + 18, 10, 6);
+        } else if (this.type === 'pterodactyl') {
+            ctx.fillStyle = '#f43f5e';
+            ctx.shadowColor = '#f43f5e';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(this.x + 10, this.y + 10, 20, 10);
+            ctx.fillRect(this.x + 30, this.y + 8, 10, 6);
+            
+            const wingDirection = Math.floor(this.frame / 10) % 2;
+            if (wingDirection === 0) {
+                ctx.beginPath();
+                ctx.moveTo(this.x + 15, this.y + 10);
+                ctx.lineTo(this.x + 5, this.y - 5);
+                ctx.lineTo(this.x + 20, this.y + 10);
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(this.x + 15, this.y + 12);
+                ctx.lineTo(this.x + 8, this.y + 25);
+                ctx.lineTo(this.x + 20, this.y + 12);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+}
+
+class Coin {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = 14;
+        this.collected = false;
+        this.pulse = 0;
+    }
+
+    update(speed, dinoX, dinoY, dinoW, dinoH, magnetActive) {
+        if (magnetActive) {
+            const targetX = dinoX + dinoW / 2;
+            const targetY = dinoY + dinoH / 2;
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 180) {
+                this.x += (dx / dist) * 12;
+                this.y += (dy / dist) * 12;
+                return;
+            }
+        }
+        this.x -= speed;
+        this.pulse += 0.15;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = '#eab308';
+        ctx.shadowColor = '#eab308';
+        const bounce = Math.sin(this.pulse) * 3;
+        ctx.shadowBlur = 8 + Math.floor(bounce);
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y + bounce, this.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y + bounce, this.size / 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class PowerUp {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.size = 20;
+        this.collected = false;
+        this.pulse = 0;
+    }
+
+    update(speed) {
+        this.x -= speed;
+        this.pulse += 0.08;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        let color = '#ffffff';
+        let icon = '';
+
+        if (this.type === 'shield') { color = '#10b981'; icon = '🛡️'; }
+        else if (this.type === 'double_jump') { color = '#06b6d4'; icon = '⚡'; }
+        else if (this.type === 'magnet') { color = '#eab308'; icon = '🧲'; }
+        else if (this.type === 'slow') { color = '#6366f1'; icon = '⏳'; }
+
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        const sizePulse = this.size + Math.sin(this.pulse) * 4;
+        ctx.shadowBlur = 12;
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, sizePulse / 2, 0, Math.PI * 2);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, sizePulse / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, this.x, this.y);
+
+        ctx.restore();
+    }
+}
+</script>
+
+<script>
+class GameEngine {
+    constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.virtualWidth = 800;
+        this.virtualHeight = 400;
+        this.groundY = 280;
+
+        this.dino = {
+            x: 80,
+            y: 0,
+            width: 50,
+            height: 50,
+            gravity: 0.9,
+            lift: -13.5,
+            velocity: 0,
+            isJumping: false,
+            doubleJumpAvailable: false,
+            isDucking: false,
+            runFrame: 0
+        };
+
+        this.state = 'MENU';
+        this.speed = 6.0;
+        this.baseSpeed = 6.0;
+        this.maxSpeed = 16.0;
+        this.score = 0;
+        this.sessionCoins = 0;
+        this.obstacles = [];
+        this.coins = [];
+        this.powerups = [];
+        this.particles = [];
+
+        this.activeBuffs = {
+            shield: 0,
+            doubleJump: 0,
+            magnet: 0,
+            slow: 0
+        };
+
+        this.volcanoSparks = [];
+        this.clouds = [
+            { x: 100, y: 50, speed: 0.2, size: 50 },
+            { x: 450, y: 80, speed: 0.15, size: 70 },
+            { x: 700, y: 40, speed: 0.25, size: 40 }
+        ];
+
+        this.initResize();
+    }
+
+    initResize() {
+        const resize = () => {
+            const container = this.canvas.parentElement;
+            if (!container) return;
+            const ratio = this.virtualWidth / this.virtualHeight;
+            let w = container.clientWidth;
+            let h = w / ratio;
+            this.canvas.width = w;
+            this.canvas.height = h;
+        };
+        window.addEventListener('resize', resize);
+        resize();
+    }
+
+    start() {
+        this.state = 'PLAYING';
+        this.score = 0;
+        this.sessionCoins = 0;
+        this.speed = this.baseSpeed;
+        this.dino.y = this.groundY - this.dino.height;
+        this.dino.velocity = 0;
+        this.dino.isJumping = false;
+        this.dino.isDucking = false;
+        this.obstacles = [];
+        this.coins = [];
+        this.powerups = [];
+        this.particles = [];
+        this.activeBuffs = { shield: 0, doubleJump: 0, magnet: 0, slow: 0 };
+        
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('game-over-menu').classList.add('hidden');
+        document.getElementById('pause-btn').classList.remove('hidden');
+
+        sound.playPowerup();
+    }
+
+    pause() {
+        if (this.state !== 'PLAYING') return;
+        this.state = 'PAUSED';
+        document.getElementById('pause-menu').classList.remove('hidden');
+    }
+
+    resume() {
+        if (this.state !== 'PAUSED') return;
+        this.state = 'PLAYING';
+        document.getElementById('pause-menu').classList.add('hidden');
+    }
+
+    triggerGameOver(reason) {
+        this.state = 'GAME_OVER';
+        sound.playGameOver();
+        
+        playerStats.coins += this.sessionCoins;
+        if (this.score > playerStats.highScore) {
+            playerStats.highScore = this.score;
+        }
+        saveStats();
+
+        document.getElementById('game-over-reason').innerText = reason;
+        document.getElementById('final-score').innerText = Math.floor(this.score);
+        document.getElementById('final-coins').innerText = `+${this.sessionCoins}`;
+        
+        document.getElementById('game-over-menu').classList.remove('hidden');
+        document.getElementById('pause-btn').classList.add('hidden');
+    }
+
+    handleJump() {
+        if (this.state !== 'PLAYING') return;
+
+        if (!this.dino.isJumping) {
+            this.dino.velocity = this.dino.lift;
+            this.dino.isJumping = true;
+            this.dino.doubleJumpAvailable = this.activeBuffs.doubleJump > 0;
+            this.createDustParticles();
+            sound.playJump();
+        } 
+        else if (this.dino.doubleJumpAvailable) {
+            this.dino.velocity = this.dino.lift * 0.9;
+            this.dino.doubleJumpAvailable = false;
+            this.createDustParticles(8);
+            sound.playJump();
+        }
+    }
+
+    handleDuck(isDucking) {
+        if (this.state !== 'PLAYING') return;
+        if (isDucking && !this.dino.isJumping) {
+            this.dino.isDucking = true;
+            if (this.dino.runFrame % 10 === 0) sound.playDuck();
+        } else {
+            this.dino.isDucking = false;
+        }
+    }
+
+    createDustParticles(count = 5) {
+        for (let i = 0; i < count; i++) {
+            this.particles.push(new Particle(
+                this.dino.x + 5,
+                this.groundY - 5,
+                'rgba(236, 72, 153, 0.4)',
+                -Math.random() * 3 - 1,
+                -Math.random() * 2,
+                Math.random() * 4 + 2,
+                30
+            ));
+        }
+    }
+
+    spawnObstacle() {
+        if (Math.random() < 0.015 && this.obstacles.length < 3) {
+            if (this.obstacles.length > 0) {
+                const last = this.obstacles[this.obstacles.length - 1];
+                if (last.x > 500) return;
+            }
+
+            const types = ['cactus_small', 'cactus_large'];
+            if (this.score > 200) {
+                types.push('pterodactyl');
+            }
+
+            const type = types[Math.floor(Math.random() * types.length)];
+            this.obstacles.push(new Obstacle(type, this.speed));
+        }
+    }
+
+    spawnCollectibles() {
+        if (Math.random() < 0.008) {
+            if (this.coins.length > 0) {
+                const lastCoin = this.coins[this.coins.length - 1];
+                if (lastCoin.x > 600) return;
+            }
+            const count = Math.floor(Math.random() * 3) + 1;
+            const baselineY = Math.random() < 0.5 ? 220 : 150;
+            for (let i = 0; i < count; i++) {
+                this.coins.push(new Coin(850 + i * 25, baselineY));
+            }
+        }
+
+        if (Math.random() < 0.002) {
+            const types = ['shield', 'double_jump', 'magnet', 'slow'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const yPos = Math.random() < 0.4 ? 180 : 230;
+            this.powerups.push(new PowerUp(900, yPos, type));
+        }
+    }
+
+    updateBuffs() {
+        Object.keys(this.activeBuffs).forEach(key => {
+            if (this.activeBuffs[key] > 0) {
+                this.activeBuffs[key]--;
+            }
+        });
+
+        const hud = document.getElementById('hud-powerups');
+        if (!hud) return;
+        hud.innerHTML = '';
+        
+        const bgConfig = {
+            shield: { name: 'Щит', icon: '🛡️', color: 'bg-emerald-500/80 border-emerald-400' },
+            doubleJump: { name: 'Двойной прыжок', icon: '⚡', color: 'bg-cyan-500/80 border-cyan-400' },
+            magnet: { name: 'Магнит монет', icon: '🧲', color: 'bg-yellow-500/80 border-yellow-400' },
+            slow: { name: 'Замедление', icon: '⏳', color: 'bg-indigo-500/80 border-indigo-400' }
+        };
+
+        Object.keys(this.activeBuffs).forEach(key => {
+            const duration = this.activeBuffs[key];
+            if (duration > 0) {
+                const conf = bgConfig[key];
+                const seconds = Math.ceil(duration / 60);
+                hud.innerHTML += `
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-white text-xs font-bold ${conf.color} backdrop-blur-sm shadow-md animate-pulse">
+                        <span>${conf.icon}</span>
+                        <span>${conf.name} (${seconds}с)</span>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    checkCollisions() {
+        const dX = this.dino.x;
+        const dY = this.dino.y;
+        const dW = this.dino.width;
+        const dH = this.dino.isDucking ? this.dino.height * 0.7 : this.dino.height;
+
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const obs = this.obstacles[i];
+            
+            if (dX + 8 < obs.x + obs.width &&
+                dX + dW - 8 > obs.x &&
+                dY + 5 < obs.y + obs.height &&
+                dY + dH > obs.y + 5) {
+                
+                if (this.activeBuffs.shield > 0) {
+                    this.activeBuffs.shield = 0;
+                    this.obstacles.splice(i, 1);
+                    sound.playPowerup();
+                    for (let p = 0; p < 15; p++) {
+                        this.particles.push(new Particle(obs.x + obs.width / 2, obs.y + obs.height / 2, '#06b6d4', (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, 4, 30));
+                    }
+                    continue;
+                }
+
+                let deathReason = 'Вы врезались в кактус!';
+                if (obs.type === 'pterodactyl') {
+                    deathReason = 'Птеродактиль унес вас с собой!';
+                }
+                this.triggerGameOver(deathReason);
+                return;
+            }
+        }
+
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const coin = this.coins[i];
+            const dist = Math.sqrt(Math.pow((coin.x - (dX + dW/2)), 2) + Math.pow((coin.y - (dY + dH/2)), 2));
+            if (dist < dW / 2 + coin.size / 2) {
+                this.sessionCoins++;
+                sound.playCoin();
+                for (let p = 0; p < 6; p++) {
+                    this.particles.push(new Particle(coin.x, coin.y, '#facc15', (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, 3, 20));
+                }
+                this.coins.splice(i, 1);
+            }
+        }
+
+        for (let i = this.powerups.length - 1; i >= 0; i--) {
+            const pu = this.powerups[i];
+            const dist = Math.sqrt(Math.pow((pu.x - (dX + dW/2)), 2) + Math.pow((pu.y - (dY + dH/2)), 2));
+            if (dist < dW / 2 + pu.size / 2) {
+                this.activeBuffs[pu.type] = 480;
+                sound.playPowerup();
+                this.powerups.splice(i, 1);
+            }
+        }
+    }
+
+    updateVolcano() {
+        if (Math.random() < 0.2) {
+            this.volcanoSparks.push({
+                x: 650,
+                y: 160,
+                vx: (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 5 - 2,
+                color: Math.random() < 0.5 ? '#f97316' : '#ef4444',
+                size: Math.random() * 3 + 1,
+                life: 60 + Math.random() * 40
+            });
+        }
+
+        for (let i = this.volcanoSparks.length - 1; i >= 0; i--) {
+            const p = this.volcanoSparks[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.08;
+            p.life--;
+            if (p.life <= 0 || p.y > this.groundY) {
+                this.volcanoSparks.splice(i, 1);
+            }
+        }
+    }
+
+    drawVolcano(ctx) {
+        ctx.fillStyle = '#1e1b4b';
+        ctx.beginPath();
+        ctx.moveTo(500, this.groundY);
+        ctx.lineTo(620, 160);
+        ctx.lineTo(680, 160);
+        ctx.lineTo(800, this.groundY);
+        ctx.fill();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 15;
+        ctx.fillRect(622, 160, 56, 4);
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(630, 160);
+        ctx.lineTo(610, 200);
+        ctx.lineTo(590, 240);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(665, 160);
+        ctx.lineTo(680, 190);
+        ctx.lineTo(700, 230);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+        this.volcanoSparks.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+    }
+
+    drawBackground() {
+        const skyGrad = this.ctx.createLinearGradient(0, 0, 0, this.virtualHeight);
+        skyGrad.addColorStop(0, '#090514');
+        skyGrad.addColorStop(0.7, '#1e1135');
+        skyGrad.addColorStop(1, '#0c0410');
+        this.ctx.fillStyle = skyGrad;
+        this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        const starPositions = [
+            [50, 40], [120, 80], [280, 30], [390, 90], [510, 50], [740, 70], [680, 30]
+        ];
+        starPositions.forEach(pos => {
+            this.ctx.fillRect(pos[0], pos[1], 2, 2);
+        });
+
+        this.ctx.fillStyle = '#110c22';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.groundY);
+        this.ctx.lineTo(100, 180);
+        this.ctx.lineTo(220, 240);
+        this.ctx.lineTo(350, 140);
+        this.ctx.lineTo(480, 280);
+        this.ctx.lineTo(550, 230);
+        this.ctx.lineTo(650, 280);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        this.drawVolcano(this.ctx);
+
+        this.ctx.fillStyle = 'rgba(236, 72, 153, 0.04)';
+        this.clouds.forEach(cloud => {
+            cloud.x -= cloud.speed;
+            if (cloud.x + cloud.size < 0) cloud.x = this.virtualWidth + 50;
+
+            this.ctx.beginPath();
+            this.ctx.arc(cloud.x, cloud.y, cloud.size / 2, 0, Math.PI * 2);
+            this.ctx.arc(cloud.x + cloud.size * 0.4, cloud.y - cloud.size * 0.1, cloud.size * 0.4, 0, Math.PI * 2);
+            this.ctx.arc(cloud.x - cloud.size * 0.4, cloud.y + cloud.size * 0.1, cloud.size * 0.3, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+
+        this.ctx.fillStyle = '#0f051c';
+        this.ctx.fillRect(0, this.groundY, this.virtualWidth, this.virtualHeight - this.groundY);
+
+        this.ctx.strokeStyle = '#ec4899';
+        this.ctx.lineWidth = 3;
+        this.ctx.shadowColor = '#ec4899';
+        this.ctx.shadowBlur = 10;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.groundY);
+        this.ctx.lineTo(this.virtualWidth, this.groundY);
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+
+        this.ctx.strokeStyle = 'rgba(236, 72, 153, 0.15)';
+        this.ctx.lineWidth = 1.5;
+        const totalLines = 15;
+        for (let i = 0; i <= totalLines; i++) {
+            const startX = (this.virtualWidth / totalLines) * i;
+            const endX = startX + (i - totalLines/2) * 20;
+            this.ctx.beginPath();
+            this.ctx.moveTo(startX, this.groundY);
+            this.ctx.lineTo(endX, this.virtualHeight);
+            this.ctx.stroke();
+        }
+    }
+
+    update() {
+        if (this.state !== 'PLAYING') return;
+
+        const speedMultiplier = this.activeBuffs.slow > 0 ? 0.6 : 1.0;
+        const currentFrameSpeed = this.speed * speedMultiplier;
+
+        if (this.speed < this.maxSpeed) {
+            this.speed += 0.0015;
+        }
+
+        this.score += 0.15 * speedMultiplier;
+        const scoreDisp = document.getElementById('score-display');
+        if (scoreDisp) scoreDisp.innerText = String(Math.floor(this.score)).padStart(5, '0');
+
+        this.dino.velocity += this.dino.gravity;
+        this.dino.y += this.dino.velocity;
+
+        if (this.dino.y > this.groundY - this.dino.height) {
+            this.dino.y = this.groundY - this.dino.height;
+            this.dino.velocity = 0;
+            this.dino.isJumping = false;
+        }
+
+        if (!this.dino.isJumping) {
+            this.dino.runFrame++;
+        }
+
+        // Роскошная шлейф-аура от персонажей
+        if (playerStats.activeSkin === 'fire' && Math.random() < 0.4) {
+            this.particles.push(new Particle(this.dino.x, this.dino.y + 20, '#f97316', -2, (Math.random() - 0.5) * 2, 3, 20));
+        } else if (playerStats.activeSkin === 'wizard' && Math.random() < 0.3) {
+            this.particles.push(new Particle(this.dino.x, this.dino.y + 10, '#c084fc', -1.5, (Math.random() - 0.5) * 2, 2.5, 25));
+        }
+
+        this.spawnObstacle();
+        this.spawnCollectibles();
+        this.updateVolcano();
+        this.updateBuffs();
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.update();
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const obs = this.obstacles[i];
+            obs.speed = currentFrameSpeed;
+            obs.update();
+            if (obs.x + obs.width < 0) {
+                this.obstacles.splice(i, 1);
+            }
+        }
+
+        const isMagnetActive = this.activeBuffs.magnet > 0;
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const coin = this.coins[i];
+            coin.update(currentFrameSpeed, this.dino.x, this.dino.y, this.dino.width, this.dino.height, isMagnetActive);
+            if (coin.x < -20) {
+                this.coins.splice(i, 1);
+            }
+        }
+
+        for (let i = this.powerups.length - 1; i >= 0; i--) {
+            const pu = this.powerups[i];
+            pu.update(currentFrameSpeed);
+            if (pu.x < -30) {
+                this.powerups.splice(i, 1);
+            }
+        }
+
+        this.checkCollisions();
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this.virtualWidth, this.virtualHeight);
+        this.ctx.save();
+        
+        const scaleX = this.canvas.width / this.virtualWidth;
+        const scaleY = this.canvas.height / this.virtualHeight;
+        this.ctx.scale(scaleX, scaleY);
+
+        this.drawBackground();
+
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.coins.forEach(c => c.draw(this.ctx));
+        this.powerups.forEach(pu => pu.draw(this.ctx));
+        this.obstacles.forEach(o => o.draw(this.ctx));
+
+        const skin = SKINS_DATA.find(s => s.id === playerStats.activeSkin) || SKINS_DATA[0];
+        
+        if (this.activeBuffs.shield > 0) {
+            this.ctx.shadowColor = '#10b981';
+            this.ctx.shadowBlur = 12;
+            
+            this.ctx.strokeStyle = '#34d399';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(this.dino.x + this.dino.width / 2, this.dino.y + this.dino.height / 2, this.dino.width * 0.7, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
+        skin.draw(
+            this.ctx,
+            this.dino.x,
+            this.dino.y,
+            this.dino.width,
+            this.dino.height,
+            this.dino.isDucking,
+            this.dino.runFrame
+        );
+
+        this.ctx.restore();
+    }
+
+    loop() {
+        this.update();
+        this.render();
+        requestAnimationFrame(() => this.loop());
+    }
+}
+</script>
+
+<script>
+function setupEvents() {
+    const handleKeyDown = (e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+            e.preventDefault();
+            game.handleJump();
+        }
+        if (e.code === 'ArrowDown') {
+            e.preventDefault();
+            game.handleDuck(true);
+        }
+        if (e.code === 'KeyP') {
+            if (game.state === 'PLAYING') game.pause();
+            else if (game.state === 'PAUSED') game.resume();
+        }
+    };
+
+    const handleKeyUp = (e) => {
+        if (e.code === 'ArrowDown') {
+            game.handleDuck(false);
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    const mobDuck = document.getElementById('mobile-duck');
+    const mobJump = document.getElementById('mobile-jump');
+
+    mobDuck.addEventListener('touchstart', (e) => { e.preventDefault(); game.handleDuck(true); });
+    mobDuck.addEventListener('touchend', (e) => { e.preventDefault(); game.handleDuck(false); });
+    mobDuck.addEventListener('mousedown', () => game.handleDuck(true));
+    mobDuck.addEventListener('mouseup', () => game.handleDuck(false));
+
+    mobJump.addEventListener('touchstart', (e) => { e.preventDefault(); game.handleJump(); });
+    mobJump.addEventListener('mousedown', () => game.handleJump());
+
+    document.getElementById('start-btn').addEventListener('click', () => game.start());
+    document.getElementById('retry-btn').addEventListener('click', () => game.start());
+    document.getElementById('go-home-btn').addEventListener('click', () => {
+        document.getElementById('game-over-menu').classList.add('hidden');
+        document.getElementById('main-menu').classList.remove('hidden');
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', () => game.pause());
+    document.getElementById('resume-btn').addEventListener('click', () => game.resume());
+    document.getElementById('exit-btn').addEventListener('click', () => {
+        document.getElementById('pause-menu').classList.add('hidden');
+        document.getElementById('main-menu').classList.remove('hidden');
+        document.getElementById('pause-btn').classList.add('hidden');
+        game.state = 'MENU';
+    });
+
+    document.getElementById('open-shop-btn').addEventListener('click', () => {
+        document.getElementById('shop-menu').classList.remove('hidden');
+    });
+    document.getElementById('close-shop-btn').addEventListener('click', () => {
+        document.getElementById('shop-menu').classList.add('hidden');
+    });
+}
+</script>
+
+<script>
+function renderShop() {
+    const container = document.getElementById('shop-items');
+    if (!container) return;
+    container.innerHTML = '';
+
+    SKINS_DATA.forEach(skin => {
+        const isActive = playerStats.activeSkin === skin.id;
+        const isUnlocked = skin.unlocked;
+        
+        let buttonHTML = '';
+        if (isActive) {
+            buttonHTML = `
+                <button class="w-full bg-emerald-600 text-white text-xs font-bold py-2 px-4 rounded-lg cursor-default">
+                    АКТИВЕН
+                </button>
+            `;
+        } else if (isUnlocked) {
+            buttonHTML = `
+                <button onclick="selectSkin('${skin.id}')" class="w-full bg-cyan-500 hover:bg-cyan-600 text-black text-xs font-bold py-2 px-4 rounded-lg transition transform active:scale-95">
+                    ВЫБРАТЬ
+                </button>
+            `;
+        } else {
+            buttonHTML = `
+                <button onclick="buySkin('${skin.id}', ${skin.price})" class="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-1 transition transform active:scale-95">
+                    <i class="fa-solid fa-coins"></i> КУПИТЬ ЗА ${skin.price}
+                </button>
+            `;
+        }
+
+        container.innerHTML += `
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center gap-4">
+                <div class="w-16 h-16 bg-slate-950 rounded-lg flex items-center justify-center shrink-0 border border-gray-800 relative overflow-hidden">
+                    <canvas id="preview-canvas-${skin.id}" width="60" height="60" class="block"></canvas>
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-extrabold text-sm text-gray-100 truncate">${skin.name}</h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5 leading-snug">${skin.desc}</p>
+                    <div class="mt-3">
+                        ${buttonHTML}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+            drawPreview(skin);
+        }, 60);
+    });
+}
+
+function drawPreview(skin) {
+    const canvas = document.getElementById(`preview-canvas-${skin.id}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 60, 60);
+    
+    // Отрисовка превью персонажа в центре
+    skin.draw(ctx, 10, 10, 40, 40, false, 0);
+}
+
+function selectSkin(id) {
+    playerStats.activeSkin = id;
+    saveStats();
+    renderShop();
+    sound.playPowerup();
+}
+
+function buySkin(id, price) {
+    if (playerStats.coins >= price) {
+        playerStats.coins -= price;
+        playerStats.unlockedSkins.push(id);
+        
+        const skin = SKINS_DATA.find(s => s.id === id);
+        if (skin) skin.unlocked = true;
+
+        playerStats.activeSkin = id;
+        saveStats();
+        renderShop();
+        sound.playPowerup();
+    } else {
+        sound.playGameOver();
+        const shopCoinsEl = document.getElementById('shop-coins');
+        if (shopCoinsEl) {
+            shopCoinsEl.classList.add('text-red-500', 'scale-110');
+            setTimeout(() => {
+                shopCoinsEl.classList.remove('text-red-500', 'scale-110');
+            }, 400);
+        }
+    }
+}
+</script>
+
+<script>
+let game;
+window.onload = function() {
+    loadStats();
+    game = new GameEngine();
+    game.loop();
+    setupEvents();
+    renderShop();
+};
+</script>
+</body>
+</html>
